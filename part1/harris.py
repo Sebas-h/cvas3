@@ -1,13 +1,12 @@
 import math
-
 import numpy as np
 from matplotlib import pyplot as plt
-
 from skimage import io
 from skimage.color import rgb2grey
 from skimage.feature import corner_harris, corner_subpix, corner_peaks
 from skimage.draw import ellipse
 from scipy.spatial import distance
+from ransac import ransac
 
 
 def compute_patches(image_gray, keypoints, patch_size=(3, 3)):
@@ -65,26 +64,34 @@ patches_img2 = (patches_img2 - np.min(patches_img2)) / (np.max(patches_img2) - n
 
 # DISTANCES
 distances = distance.cdist(patches_img1, patches_img2)
-print(distances[:5,:5])
+# print(distances[:5,:5])
 print('distances:', distances.shape)
 
 
 # BEST K MATCHED POINTS
-k = 10
+k = 100
 t = []
 for i in range(distances.shape[0]):
     for j in range(distances.shape[1]):
-        # (row,col,dist_value)
-        t.append((int(i),int(j),distances[i,j]))
+        # (dist_row, dist_col, dist_value, x, y, x', y')
+        t.append((i, j,distances[i,j], 
+            coords_img1[i][0], coords_img1[i][1],
+            coords_img2[j][0], coords_img2[j][1] ))
 t = np.array(t)
 # print(t[:5,:5])
 # print('matrix with indices:',t.shape)
 ordered_dists = t[ t[:,2].argsort() ]
-best_k_dists = ordered_dists[:k,:]
-print('best k matched points', best_k_dists)
+top_k_dists = ordered_dists[:k,:]
+print('best k matched points:\n', top_k_dists)
 
 
 # RANSAC TO ESTIMATE AFFINE TRANSFORM
+bestfit = ransac(top_k_dists[:,3:], 0, 3, 100, 10, 0)
+
+
+# USE least squares on bestfit to make it better (tighter)
+#       do I need the datapoints that lay within this bestfit model to run LS?
+
 
 
 # plt.figure(1, figsize=(8, 3))
