@@ -58,13 +58,14 @@ patches_img2 = compute_patches(image2, coords_img2)
 
 
 # NORMALIZE
-patches_img1 = (patches_img1 - np.min(patches_img1)) / (np.max(patches_img1) - np.min(patches_img1))
-patches_img2 = (patches_img2 - np.min(patches_img2)) / (np.max(patches_img2) - np.min(patches_img2))
+patches_img1 = (patches_img1 - np.min(patches_img1)) / \
+    (np.max(patches_img1) - np.min(patches_img1))
+patches_img2 = (patches_img2 - np.min(patches_img2)) / \
+    (np.max(patches_img2) - np.min(patches_img2))
 
 
 # DISTANCES
 distances = distance.cdist(patches_img1, patches_img2)
-# print(distances[:5,:5])
 print('distances:', distances.shape)
 
 
@@ -74,23 +75,28 @@ t = []
 for i in range(distances.shape[0]):
     for j in range(distances.shape[1]):
         # (dist_row, dist_col, dist_value, x, y, x', y')
-        t.append((i, j,distances[i,j], 
-            coords_img1[i][0], coords_img1[i][1],
-            coords_img2[j][0], coords_img2[j][1] ))
+        t.append((i, j, distances[i, j],
+                  coords_img1[i][0], coords_img1[i][1],
+                  coords_img2[j][0], coords_img2[j][1])
+                 )
 t = np.array(t)
 # print(t[:5,:5])
 # print('matrix with indices:',t.shape)
-ordered_dists = t[ t[:,2].argsort() ]
-top_k_dists = ordered_dists[:k,:]
-print('best k matched points:\n', top_k_dists)
+ordered_dists = t[t[:, 2].argsort()]
+top_k_dists = ordered_dists[:k, :]
+# print('best k matched points:\n', top_k_dists)
 
 
 # RANSAC TO ESTIMATE AFFINE TRANSFORM
-bestfit = ransac(top_k_dists[:,3:], 0, 3, 100, 10, 0)
+model, inliers, count, error = ransac(top_k_dists[:, 3:], 0, 3, 100, 10, 10)
+
+# LEAST SQUARES
+# on inliers returned by ransac
+# todo
 
 
-# USE least squares on bestfit to make it better (tighter)
-#       do I need the datapoints that lay within this bestfit model to run LS?
+# STICH IMAGES
+
 
 
 

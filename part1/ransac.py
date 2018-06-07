@@ -1,6 +1,6 @@
 import numpy as np
 
-
+# Source: wikipedia 'RANSAC'
 # Given:
 #     data – a set of observed data points
 #     model – a model that can be fitted to data points
@@ -50,6 +50,8 @@ def ransac(data, model, n, k, t, d):
     """
     best_model = 0
     best_counter = 0
+    best_models_inliers = 0
+    best_error = np.inf
 
     for _ in range(k):
         # 1)choose n datapoints, required to fit the model
@@ -58,10 +60,13 @@ def ransac(data, model, n, k, t, d):
 
         # 2)compute the (potential) model (affine transform matrix) using the n required datapoints
         #       aT=b .. T = b * a^-1
-        potential_model = np.dot(
-            np.array([required_datapoints[:,2], required_datapoints[:,3], np.repeat([1], n)]),
-            np.linalg.inv(np.array([required_datapoints[:,0], required_datapoints[:,1], np.repeat([1], n)]))
-        )
+        a = np.array([required_datapoints[:,0], required_datapoints[:,1], np.repeat([1], n)])
+        if np.linalg.det(a) == 0:
+            a_inv = np.linalg.pinv(a)
+        else:
+            a_inv = np.linalg.inv(a)
+        b = np.array([required_datapoints[:,2], required_datapoints[:,3], np.repeat([1], n)])
+        potential_model = np.dot(b, a_inv)
         potential_model = potential_model[:2,:]
 
         # 3) use computed (potential) model to calculate img2 coordinate for potential matching point
@@ -69,20 +74,39 @@ def ransac(data, model, n, k, t, d):
         #       if the difference is within a threshold t
         #       then increase count of good transforms that the potential model gave (called inliers)
         counter_within_t = 0
+        inliers = required_datapoints
         other_datapoints = np.delete(data, random_indices, axis=0)
+
         for datapoint in other_datapoints:
-            predicted_transformed_point = np.dot(
-                potential_model,
-                np.concatenate((datapoint[:2],[1]))
-            )
-            difference = np.abs(predicted_transformed_point - datapoint[2:])
-            if np.all(difference - t):
+            # for each datapoint outside the required ones
+            #       compute error of datapoint to model
+            #       if error < t: add to inliers
+            predicted_transformed_point = np.dot(potential_model, np.concatenate((datapoint[:2],[1])))
+            # (euclidean) distance from model prediction to actual point:
+            if np.linalg.norm(predicted_transformed_point - datapoint[2:]) < t:
+                inliers = np.concatenate((inliers,[datapoint]))
                 counter_within_t += 1
-        if counter_within_t > best_counter:
-            best_model = potential_model
+
+        # if enough inliers within t, recompute transformation matrix using all inliers
+        #       if new model better performance, take this one
+        # [not sure this is correct, the assignment wants ransac to return biggest set of inliers and not a model, :/]
+        if counter_within_t > d:
+            aa = np.array([inliers[:,0], inliers[:,1], np.repeat([1], inliers.shape[0])])
+            bb = np.array([inliers[:,2], inliers[:,3], np.repeat([1], inliers.shape[0])])
+            better_model = np.dot(bb, np.linalg.pinv(aa))[:2,:]
+            sum_error = 0
+            for inlier in inliers:
+                predicted_transformed_point = np.dot(better_model, np.concatenate((inlier[:2],[1])))
+                sum_error += np.linalg.norm(predicted_transformed_point - inlier[2:])
+            avg_error = sum_error / inliers.shape[0]
+            if avg_error < best_error:
+                best_error = avg_error
+                best_model = better_model
+                best_counter = counter_within_t
+                best_models_inliers = inliers
 
     # remember the potential model and how many inliers it gave
     # do steps 1, 2, 3 for k times (k = parameter of number of iterations of alg)
     # choose the best model and return this
 
-    return best_model
+    return best_model, best_models_inliers, best_counter, best_error
