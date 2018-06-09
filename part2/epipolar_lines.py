@@ -40,7 +40,7 @@ def plot_match_points(image1, image2, matches):
 
 def plot_epipolar_lines(matches, image1, image2, F):
 
-    plot_every_ith_line = 1
+    plot_every_ith_line = 10
 
     image1_w = image1.shape[1]
     image1_h = image1.shape[0]
@@ -194,9 +194,9 @@ if __name__ == "__main__":
     image2 = io.imread('house2.jpg')
     matches = np.loadtxt('house_matches.txt')
 
-    # image1 = io.imread('library1.jpg')
-    # image2 = io.imread('library2.jpg')
-    # matches = np.loadtxt('library_matches.txt')
+    image1 = io.imread('library1.jpg')
+    image2 = io.imread('library2.jpg')
+    matches = np.loadtxt('library_matches.txt')
 
     # plot_match_lines(image1, image2, matches)
 
