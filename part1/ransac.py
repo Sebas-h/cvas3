@@ -1,53 +1,20 @@
 import numpy as np
 
-# Source: wikipedia 'RANSAC'
-# Given:
-#     data – a set of observed data points
-#     model – a model that can be fitted to data points
-#     n – minimum number of data points required to fit the model
-#     k – maximum number of iterations allowed in the algorithm
-#     t – threshold value to determine when a data point fits a model
-#     d – number of close data points required to assert that a model fits well to data
 
-# Return:
-#     bestfit – model parameters which best fit the data (or nul if no good model is found)
-
-# iterations = 0
-# bestfit = nul
-# besterr = something really large
-# while iterations < k {
-#     maybeinliers = n randomly selected values from data
-#     maybemodel = model parameters fitted to maybeinliers
-#     alsoinliers = empty set
-#     for every point in data not in maybeinliers {
-#         if point fits maybemodel with an error smaller than t
-#              add point to alsoinliers
-#     }
-#     if the number of elements in alsoinliers is > d {
-#         % this implies that we may have found a good model
-#         % now test how good it is
-#         bettermodel = model parameters fitted to all points in maybeinliers and alsoinliers
-#         thiserr = a measure of how well model fits these points
-#         if thiserr < besterr {
-#             bestfit = bettermodel
-#             besterr = thiserr
-#         }
-#     }
-#     increment iterations
-# }
-# return bestfit
-
-
-
-def ransac(data, model, n, k, t, d):
+def ransac(data, n, k, t, d):
+    """ransac implementation
+    
+    Arguments:
+        data {array} -- data to fit model to
+        n {int} -- number of datapoints required
+        k {int} -- number of ransace iterations
+        t {int} -- threshold value to be an inlier
+        d {int} -- number of inliers for model to be considered
+    
+    Returns:
+        array -- affine transform matrix
     """
-    data – a set of observed data points
-    model – a model that can be fitted to data points
-    n – minimum number of data points required to fit the model
-    k – maximum number of iterations allowed in the algorithm
-    t – threshold value to determine when a data point fits a model
-    d – number of close data points required to assert that a model fits well to data
-    """
+
     best_model = 0
     best_counter = 0
     best_models_inliers = 0
@@ -61,23 +28,21 @@ def ransac(data, model, n, k, t, d):
 
 
         # 2)compute the (potential) model (affine transform matrix) using the n required datapoints
-        #       aT=b .. T = b * a^-1
-        a = np.array([required_datapoints[:,0], required_datapoints[:,1], np.repeat([1], n)])
-        # if np.linalg.det(a) == 0:
-        #     a_inv = np.linalg.pinv(a)
-        # else:
-        #     a_inv = np.linalg.inv(a)
-        b = np.array([required_datapoints[:,2], required_datapoints[:,3], np.repeat([1], n)])
-        # potential_model = np.dot(b, a_inv)
-        test = np.linalg.lstsq(a,b, rcond=None)[0]
-        # potential_model = potential_model[:2,:]
-        potential_model = np.concatenate( (test[:2,:], np.array([[0,0,1]]) ) )
-        test_model = least_squares_for_affine(required_datapoints)[0]
+        #       xT = x' ==> T = x' * inverse(x)
+        # method 1:
+        # a = np.array([required_datapoints[:,0], required_datapoints[:,1], np.repeat([1], n)])
+        # b = np.array([required_datapoints[:,2], required_datapoints[:,3], np.repeat([1], n)])
+        # potential_model = np.linalg.lstsq(a,b, rcond=None)[0]
+        # potential_model = np.concatenate( (test[:2,:], np.array([[0,0,1]]) ) )
+        
+        # method 2:  (Gives different matrix than method 1)
+        tranform_params = least_squares_for_affine(required_datapoints)[0]
         potential_model = np.array([
-            [test_model[0][0], test_model[1][0], test_model[2][0]],
-            [test_model[3][0], test_model[4][0], test_model[5][0]],
+            [tranform_params[0][0], tranform_params[1][0], tranform_params[2][0]],
+            [tranform_params[3][0], tranform_params[4][0], tranform_params[5][0]],
             [0,0,1]
         ])
+
 
         # 3) use computed (potential) model to calculate img2 coordinate for potential matching point
         #       and compare with actual value (x',y') of matching point img2
@@ -109,12 +74,12 @@ def ransac(data, model, n, k, t, d):
             best_model = better_model
             best_models_inliers = inliers
             bm_inlier_dists = inliers_dists
-   
 
     return best_model, best_models_inliers, best_counter, best_error, bm_inlier_dists
 
 
 def least_squares_for_affine(inliers):
+    # matrix like on slide 35 of Hough-Ransac Lecture pdf
     a = np.array([
         [   np.sum(inliers[:,0] ** 2), 
             np.sum(inliers[:,0]*inliers[:,1]),
@@ -161,24 +126,3 @@ def least_squares_for_affine(inliers):
         [np.sum(inliers[:,3])]
     ])
     return np.linalg.lstsq(a, b, rcond=None)
-
-
-# ALTERNATIVE MEASURE FOR INCLUSION NEW MODEL
-# if counter_within_t > d:
-#     aa = np.array([inliers[:,0], inliers[:,1], np.repeat([1], inliers.shape[0])])
-#     bb = np.array([inliers[:,2], inliers[:,3], np.repeat([1], inliers.shape[0])])
-#     better_model = np.dot(bb, np.linalg.pinv(aa))[:2,:]
-#     sum_error = 0
-#     for inlier in inliers:
-#         predicted_transformed_point = np.dot(better_model, np.concatenate((inlier[:2],[1])))
-#         sum_error += np.linalg.norm(predicted_transformed_point - inlier[2:])
-#     avg_error = sum_error / inliers.shape[0]
-#     if avg_error < best_error:
-#         best_error = avg_error
-#         best_model = better_model
-#         best_counter = counter_within_t
-#         best_models_inliers = inliers
-
-# remember the potential model and how many inliers it gave
-# do steps 1, 2, 3 for k times (k = parameter of number of iterations of alg)
-# choose the best model and return this
