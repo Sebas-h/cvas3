@@ -7,6 +7,7 @@ from skimage.feature import corner_harris, corner_subpix, corner_peaks
 from skimage.draw import ellipse
 from scipy.spatial import distance
 from ransac import ransac
+from skimage import transform
 
 
 def compute_patches(image_gray, keypoints, patch_size=(3, 3)):
@@ -36,6 +37,7 @@ image1 = io.imread('part1/data/unimaas1/unimaas_a.jpg')
 image2 = io.imread('part1/data/unimaas1/unimaas_b.jpg')
 
 image1 = rgb2grey(image1)
+image1 = transform.rotate(image1, 5)
 image2 = rgb2grey(image2)
 print('img1 gray shape', image1.shape)
 
@@ -70,7 +72,7 @@ print('distances:', distances.shape)
 
 
 # BEST K MATCHED POINTS
-k = 100
+k = 500
 t = []
 for i in range(distances.shape[0]):
     for j in range(distances.shape[1]):
@@ -80,25 +82,45 @@ for i in range(distances.shape[0]):
                   coords_img2[j][0], coords_img2[j][1])
                  )
 t = np.array(t)
-# print(t[:5,:5])
-# print('matrix with indices:',t.shape)
 ordered_dists = t[t[:, 2].argsort()]
+if ordered_dists.shape[0] < k:
+    k = ordered_dists.shape[0]
 top_k_dists = ordered_dists[:k, :]
-# print('best k matched points:\n', top_k_dists)
 
 
 # RANSAC TO ESTIMATE AFFINE TRANSFORM
-model, inliers, count, error = ransac(top_k_dists[:, 3:], 0, 3, 100, 10, 10)
-
-# LEAST SQUARES
-# on inliers returned by ransac
-# todo
+data = top_k_dists[:, 3:]
+model = 0  # not sure about this parameter
+n = 3
+num_iters = 100
+threshold = 20  # distance threshold to model to be counted as inlier
+d = 20
+model, inliers, count, error, dists = ransac(data, model, n, num_iters, threshold, d)
+print('#inliers', inliers.shape[0])
+print('#dists:', len(dists))
+print('mean dists:', np.mean(dists))
+print('stdev dists:', np.std(dists))
 
 
 # STICH IMAGES
+affine_transform_matrix = np.array([
+    [model[0][0], model[1][0], model[2][0]],
+    [model[3][0], model[4][0], model[5][0]],
+    [0,0,1]
+])
+tform = transform.AffineTransform(matrix=affine_transform_matrix)
+img1_transformed = transform.warp(image1, tform)
 
 
 
+plt.figure(1)
+ax1 = plt.subplot(131)
+ax2 = plt.subplot(132)
+ax3 = plt.subplot(133)
+ax1.imshow(image1, cmap='gray')
+ax2.imshow(img1_transformed, cmap='gray')
+ax3.imshow(image2,cmap='gray')
+plt.show()
 
 # plt.figure(1, figsize=(8, 3))
 # ax1 = plt.subplot(121)
