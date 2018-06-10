@@ -14,7 +14,7 @@ def ransac(data, n, k, t, d):
     Returns:
         array -- affine transform matrix
     """
-
+    
     best_model = 0
     best_counter = 0
     best_models_inliers = 0
@@ -76,6 +76,15 @@ def ransac(data, n, k, t, d):
             bm_inlier_dists = inliers_dists
 
     return best_model, best_models_inliers, best_counter, best_error, bm_inlier_dists
+
+
+def calculate_errors(inliers, model):
+    errors = []
+    for inlier in inliers:
+        predicted_transformed_point = np.dot(model, np.concatenate((inlier[:2],[1])))
+        err = np.linalg.norm(predicted_transformed_point[:2] - inlier[2:])
+        errors.append(err)
+    return errors
 
 
 def least_squares_for_affine(inliers):
