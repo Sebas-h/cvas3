@@ -17,11 +17,11 @@ def main():
 
     show_stitched_image = False
 
-    patch_size = [5,5]
+    patch_size = [9,9]
     k = 200             # top k matches that are chosen
 
     ransac_iters = 500
-    ransac_threshold = 200
+    ransac_threshold = 5
     ransac_num_inliers = 3
     stitched_image = im_stitch(image_left, image_right, patch_size, k, ransac_iters, ransac_threshold, ransac_num_inliers)
     if show_stitched_image:
