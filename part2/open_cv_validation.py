@@ -29,8 +29,8 @@ matchesFile = 'house_matches.txt'
 # imagePath2 = 'library2.jpg'
 # matchesFile = 'library_matches.txt'
 
-img1 = cv2.imread(imagePath1, 0)  #queryimage # left image
-img2 = cv2.imread(imagePath2, 0) #trainimage # right image
+img1 = cv2.imread(imagePath1, 0)  # queryimage # left image
+img2 = cv2.imread(imagePath2, 0) # trainimage # right image
 matches = np.loadtxt(matchesFile)
 
 pts1 = matches[:, [0, 1]]
@@ -43,6 +43,8 @@ pts2 = np.int32(matches[:, [2, 3]])
 F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_LMEDS)
 
 print(F)
+
+fig = plt.figure(1)
 
 # Find epilines corresponding to points in right image (second image) and
 # drawing its lines on left image
@@ -57,3 +59,5 @@ img3, img4 = drawlines(img2, img1, lines2, pts2, pts1)
 plt.subplot(121), plt.imshow(img5)
 plt.subplot(122), plt.imshow(img3)
 plt.show()
+
+fig.savefig("epipolar_lines_house_opencv.pdf", bbox_inches='tight')
