@@ -1,6 +1,9 @@
 from skimage import io, transform
 from image_stitching import *
 from ransac import *
+import cyvlfeat.sift as sift
+from skimage.color import rgb2grey
+
 
 
 def main():
@@ -8,20 +11,26 @@ def main():
     # img2_name = 'unimaas1/unimaas_b.jpg'
     # img1_name = 'unimaas2/unimaas_a.jpg'
     # img2_name = 'unimaas2/unimaas_b.jpg'
-    img1_name = 'building/a.jpg'
-    img2_name = 'building/b.jpg'
+    # img1_name = 'building/a.jpg'
+    # img2_name = 'building/b.jpg'
+
+    img1_name = 'room/room_a.jpg'
+    img2_name = 'room/room_b.jpg'
 
     print(img1_name)
     image_left = io.imread('part1/data/' + img1_name)
     image_right = io.imread('part1/data/' + img2_name)
 
-    show_stitched_image = False
+    image_left = transform.rescale(image_left, 0.25)
+    image_right = transform.rescale(image_right, 0.25)
+
+    show_stitched_image = True
 
     patch_size = [9,9]
     k = 200             # top k matches that are chosen
 
     ransac_iters = 500
-    ransac_threshold = 5
+    ransac_threshold = 10
     ransac_num_inliers = 3
     stitched_image = im_stitch(image_left, image_right, patch_size, k, ransac_iters, ransac_threshold, ransac_num_inliers)
     if show_stitched_image:
@@ -31,17 +40,32 @@ def main():
 
 
 def im_stitch(image_left, image_right, patch_size, k, ransac_iters, ransac_threshold, ransac_num_inliers):
-    # HARRIS
-    coords_1, coord_subpix_1 = harris_detector(image_left)
-    coords_2, coord_subpix_2 = harris_detector(image_right)
+    # # HARRIS
+    # coords_1, coord_subpix_1 = harris_detector(image_left)
+    # coords_2, coord_subpix_2 = harris_detector(image_right)
     
-    # DESCRIBE KEYPOINTS
-    descriptors_1 = patch_descriptor(image_left, coords_1, patch_size)
-    descriptors_2 = patch_descriptor(image_right, coords_2, patch_size)
-    print('patch_size =', patch_size, ', descriptor size =', patch_size[0] * patch_size[1])
-    print('#keypoints img1 =', descriptors_1.shape[0])
-    print('#keypoints img2 =', descriptors_2.shape[0])
-    print('#potential matches =', descriptors_1.shape[0] * descriptors_2.shape[0])
+    # # DESCRIBE KEYPOINTS
+    # descriptors_1 = patch_descriptor(image_left, coords_1, patch_size)
+    # descriptors_2 = patch_descriptor(image_right, coords_2, patch_size)
+    # print('patch_size =', patch_size, ', descriptor size =', patch_size[0] * patch_size[1])
+    # print('#keypoints img1 =', descriptors_1.shape[0])
+    # print('#keypoints img2 =', descriptors_2.shape[0])
+    # print('#potential matches =', descriptors_1.shape[0] * descriptors_2.shape[0])
+
+    keypoints_1, descriptors_1 = sift.sift(rgb2grey(image_left), compute_descriptor=True)
+    keypoints_2, descriptors_2 = sift.sift(rgb2grey(image_right), compute_descriptor=True)
+
+    coords_1 = keypoints_1[:,:2]
+    coords_2 = keypoints_2[:,:2]
+
+    # _, (ax1, ax2) = plt.subplots(1, 2)
+    # ax1.imshow(image_left, cmap='gray')
+    # ax1.plot(keypoints_1[:, 1], keypoints_1[:, 0], 'ro')
+    # ax2.imshow(image_right, cmap='gray')
+    # ax2.plot(keypoints_2[:, 1], keypoints_2[:, 0], 'ro')
+
+    # plt.show()
+    # return 0
 
     # CALCULATE DISTS AND CHOOSE K BEST MATCHES 
     #   the ones with closest dist between descriptors
@@ -75,11 +99,11 @@ def im_stitch(image_left, image_right, patch_size, k, ransac_iters, ransac_thres
     inliers[:,2] -= img1_x_max
     sorted_inliers_by_err = inliers[np.argsort(errors)]
 
-    matches_to_show = 10
+    matches_to_show = 100
     if matches_to_show > inliers.shape[0]:
         matches_to_show = inliers.shape[0]
 
-    # plot_matching_points(image_left, image_right, sorted_inliers_by_err, matches_to_show)
+    plot_matching_points(image_left, image_right, sorted_inliers_by_err, matches_to_show)
 
     stitched_image = stitch_images(image_left, image_right, tform_mat)
     return stitched_image

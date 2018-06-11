@@ -45,19 +45,35 @@ def patch_descriptor(image, coords, patch_size):
 def choose_matching_points(descriptors_1, coords_1,
     coords_2, descriptors_2, k, distances_measure='euclidean'):
     distances = distance.cdist(descriptors_1, descriptors_2, metric=distances_measure)
+    distances_sort = np.argmin(distances, axis=1)
+
     matched_points = []
-    for i in range(distances.shape[0]):
-        for j in range(distances.shape[1]):
-            # (dist_row, dist_col, dist_value, x, y, x', y')
-            matched_points.append(
-                (
-                    i, j, distances[i, j],
-                    coords_1[i][1],
-                    coords_1[i][0],
-                    coords_2[j][1], 
-                    coords_2[j][0]
-                )
-            )
+
+    for idx, val in enumerate(distances_sort):
+        matched_points.append((
+            idx, val, distances[idx][val],
+            coords_1[idx][1],
+            coords_1[idx][0],
+            coords_2[val][1], 
+            coords_2[val][0]
+        ))
+
+    print(distances_sort.shape)
+    print(len(matched_points))
+
+    # for i in range(distances.shape[0]):
+    #     for j in range(distances.shape[1]):
+    #         # (dist_row, dist_col, dist_value, x, y, x', y')
+    #         matched_points.append(
+    #             (
+    #                 i, j, distances[i, j],
+    #                 coords_1[i][1],
+    #                 coords_1[i][0],
+    #                 coords_2[j][1], 
+    #                 coords_2[j][0]
+    #             )
+    #         )
+
     matched_points = np.array(matched_points)
     ordered_dists = matched_points[matched_points[:, 2].argsort()]
     if ordered_dists.shape[0] < k:
@@ -125,7 +141,7 @@ def plot_matching_points(image1, image2, sorted_inliers_by_err, num_matches_show
         i += 1
     resn = "part1/results/res"+str(i)+".png"
     fig2.savefig(resn, dpi=200) 
-    # plt.show()
+    plt.show()
 
 
 def stitch_images(image1, image2, affine_transform_matrix):
@@ -144,14 +160,12 @@ def plot_stitched_img(stitched_img):
     fig = plt.figure(3, dpi=200)
     ax6 = plt.subplot(111)
     ax6.imshow(stitched_img, cmap='gray')
-
     i = 0
     while os.path.exists("part1/results/stitch%s.png" % i):
         i += 1
     resn = "part1/results/stitch"+str(i)+".png"
     fig.savefig(resn, dpi=200) 
-
-    # plt.show()
+    plt.show()
 
 def plot_harris_corners(image1, image2, 
         coords_img1, coords_subpix_img1,
